@@ -16,6 +16,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="setup">Setup</button>
       <button class="tab" data-tab="control">Control</button>
+      <button class="tab" data-tab="dash">Dash</button>
       <button class="tab" data-tab="scan">QR Scan</button>
     </div>
 
@@ -50,6 +51,36 @@
       </div>
 
       <div id="entities" class="list"></div>
+    </section>
+
+    <!-- DASH -->
+    <section class="panel hidden" id="tab-dash">
+      <div class="hint" style="margin-top:0;">
+        These open your HA UI directly (dashboards/views).
+        If the R1 keeps you logged in, great — otherwise you may need to log in once.
+      </div>
+
+      <div style="height:8px;"></div>
+
+      <button class="big btn primary" id="openHaRoot">Open Home Assistant</button>
+      <button class="big btn" id="openLovelace">Open Lovelace (Overview)</button>
+
+      <div style="height:8px;"></div>
+
+      <label class="label">Custom dashboard path (optional)</label>
+      <input id="dashPath" class="input" placeholder="/lovelace" />
+
+      <div class="row">
+        <button id="saveDashBtn" class="btn">Save</button>
+        <button id="openDashBtn" class="btn primary">Open</button>
+      </div>
+
+      <div class="hint">
+        Examples:
+        <div class="mono">/lovelace</div>
+        <div class="mono">/lovelace/0</div>
+        <div class="mono">/dashboard-mushroom</div>
+      </div>
     </section>
 
     <!-- QR SCAN -->
