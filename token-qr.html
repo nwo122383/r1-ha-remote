@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HA Token QR Generator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; max-width: 720px; margin: 0 auto; }
+    input, textarea { width: 100%; padding: 10px; font-size: 16px; }
+    button { padding: 10px 14px; font-size: 16px; margin-top: 10px; }
+    .box { border: 1px solid #ddd; padding: 12px; border-radius: 10px; margin-top: 12px; }
+    #qr { display: grid; place-items: center; min-height: 320px; }
+    .hint { color:#555; font-size: 14px; }
+    code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>Home Assistant Token → QR</h2>
+  <div class="hint">
+    Paste your Long-Lived Access Token here and generate a QR.
+    The R1 app can scan either raw token text or JSON like <code>{"token":"..."}</code>.
+  </div>
+
+  <div class="box">
+    <label>Long-Lived Access Token</label>
+    <textarea id="token" rows="4" placeholder="Paste token here"></textarea>
+
+    <label style="display:block;margin-top:10px;">Format</label>
+    <select id="format" style="width:100%;padding:10px;font-size:16px;">
+      <option value="raw">Raw token text (simplest)</option>
+      <option value="json">JSON {"token":"..."}</option>
+    </select>
+
+    <button id="make">Generate QR</button>
+  </div>
+
+  <div class="box" id="qr">
+    <div class="hint">Generate to show QR</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script>
+    const tokenEl = document.getElementById("token");
+    const formatEl = document.getElementById("format");
+    const qrEl = document.getElementById("qr");
+
+    document.getElementById("make").onclick = async () => {
+      const token = tokenEl.value.trim();
+      if (!token) return alert("Paste a token first.");
+
+      const payload = formatEl.value === "json"
+        ? JSON.stringify({ token })
+        : token;
+
+      qrEl.innerHTML = "";
+      const canvas = document.createElement("canvas");
+      qrEl.appendChild(canvas);
+
+      await QRCode.toCanvas(canvas, payload, {
+        width: 300,
+        margin: 2,
+        errorCorrectionLevel: "M",
+      });
+    };
+  </script>
+</body>
+</html>
