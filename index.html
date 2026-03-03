@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=240, height=282, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>HA Remote (R1)</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="header">
+      <div class="title">Home Assistant</div>
+      <div class="subtitle">Rabbit R1 Remote</div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="setup">Setup</button>
+      <button class="tab" data-tab="control">Control</button>
+      <button class="tab" data-tab="scan">QR Scan</button>
+    </div>
+
+    <!-- SETUP -->
+    <section class="panel" id="tab-setup">
+      <label class="label">Server URL</label>
+      <input id="haUrl" class="input" placeholder="http://192.168.4.55:8123" />
+
+      <label class="label">Token (optional paste)</label>
+      <input id="haToken" class="input" placeholder="Long-Lived Access Token" />
+
+      <div class="row">
+        <button id="saveBtn" class="btn">Save</button>
+        <button id="testBtn" class="btn primary">Test</button>
+      </div>
+
+      <div class="hint">
+        Tip: Use QR Scan tab to scan a QR code containing your token.
+      </div>
+    </section>
+
+    <!-- CONTROL -->
+    <section class="panel hidden" id="tab-control">
+      <div class="row">
+        <input id="entityId" class="input" placeholder="entity_id (light.kitchen)" />
+        <button id="toggleBtn" class="btn primary">Toggle</button>
+      </div>
+
+      <div class="row">
+        <input id="filter" class="input" placeholder="Filter (kitchen / light.)" />
+        <button id="refreshBtn" class="btn">Refresh</button>
+      </div>
+
+      <div id="entities" class="list"></div>
+    </section>
+
+    <!-- QR SCAN -->
+    <section class="panel hidden" id="tab-scan">
+      <div class="row">
+        <button id="startScanBtn" class="btn primary" style="flex:1;">Start Scan</button>
+        <button id="stopScanBtn" class="btn danger">Stop</button>
+      </div>
+
+      <div class="hint">
+        Scan a QR code that contains either:
+        <div class="mono">YOUR_LONG_LIVED_TOKEN</div>
+        or JSON like:
+        <div class="mono">{"token":"YOUR_TOKEN"}</div>
+      </div>
+
+      <video id="video" class="video" playsinline></video>
+    </section>
+
+    <section class="log" id="log"></section>
+  </div>
+
+  <!-- ZXing for QR scanning -->
+  <script src="https://unpkg.com/@zxing/browser@0.1.1"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
