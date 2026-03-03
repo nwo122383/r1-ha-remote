@@ -12,6 +12,12 @@
   const refreshBtn = document.getElementById("refreshBtn");
   const entitiesEl = document.getElementById("entities");
 
+  const dashPathEl = document.getElementById("dashPath");
+  const saveDashBtn = document.getElementById("saveDashBtn");
+  const openDashBtn = document.getElementById("openDashBtn");
+  const openHaRootBtn = document.getElementById("openHaRoot");
+  const openLovelaceBtn = document.getElementById("openLovelace");
+
   const startScanBtn = document.getElementById("startScanBtn");
   const stopScanBtn = document.getElementById("stopScanBtn");
   const videoEl = document.getElementById("video");
@@ -22,6 +28,7 @@
     tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
     document.getElementById("tab-setup").classList.toggle("hidden", name !== "setup");
     document.getElementById("tab-control").classList.toggle("hidden", name !== "control");
+    document.getElementById("tab-dash").classList.toggle("hidden", name !== "dash");
     document.getElementById("tab-scan").classList.toggle("hidden", name !== "scan");
   }
   tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
@@ -39,20 +46,29 @@
     return s;
   }
 
+  function normalizePath(p) {
+    let s = (p || "").trim();
+    if (!s) return "/";
+    if (!s.startsWith("/")) s = "/" + s;
+    return s;
+  }
+
   function getSettings() {
     return {
       haUrl: normalizeUrl(localStorage.getItem("ha_url") || haUrlEl.value),
       token: (localStorage.getItem("ha_token") || haTokenEl.value || "").trim(),
       lastEntity: localStorage.getItem("ha_last_entity") || "",
       lastFilter: localStorage.getItem("ha_last_filter") || "",
+      dashPath: localStorage.getItem("ha_dash_path") || "/lovelace",
     };
   }
 
-  function setSettings({ haUrl, token, lastEntity, lastFilter }) {
+  function setSettings({ haUrl, token, lastEntity, lastFilter, dashPath }) {
     if (haUrl !== undefined) localStorage.setItem("ha_url", normalizeUrl(haUrl));
     if (token !== undefined) localStorage.setItem("ha_token", token.trim());
     if (lastEntity !== undefined) localStorage.setItem("ha_last_entity", lastEntity.trim());
     if (lastFilter !== undefined) localStorage.setItem("ha_last_filter", lastFilter.trim());
+    if (dashPath !== undefined) localStorage.setItem("ha_dash_path", normalizePath(dashPath));
   }
 
   function applySettingsToUI() {
@@ -61,6 +77,7 @@
     haTokenEl.value = s.token ? "••••••••••••••••" : "";
     entityIdEl.value = s.lastEntity;
     filterEl.value = s.lastFilter;
+    dashPathEl.value = s.dashPath;
   }
 
   function authHeaders(token) {
@@ -113,11 +130,10 @@
     if (!allowed.has(domain)) {
       throw new Error(`Unsupported domain "${domain}". Try light./switch./fan./input_boolean`);
     }
-    const result = await haFetch(`/api/services/${domain}/toggle`, {
+    await haFetch(`/api/services/${domain}/toggle`, {
       method: "POST",
       body: JSON.stringify({ entity_id: entityId }),
     });
-    return result;
   }
 
   async function refreshEntities() {
@@ -135,7 +151,7 @@
         const name = (s.attributes?.friendly_name || "").toLowerCase();
         return s.entity_id.toLowerCase().includes(filter) || name.includes(filter);
       })
-      .slice(0, 60); // keep it small for the R1
+      .slice(0, 60);
 
     entitiesEl.innerHTML = "";
     for (const s of filtered) {
@@ -157,7 +173,6 @@
           log(`Toggling ${s.entity_id}...`);
           await toggleEntity(s.entity_id);
           log(`Toggled ${s.entity_id}`);
-          // quick refresh so the badge updates
           await refreshEntities();
         } catch (e) {
           log(String(e));
@@ -175,11 +190,18 @@
     }[m]));
   }
 
-  // Save / Test buttons
+  function openHaPath(path) {
+    const { haUrl } = getSettings();
+    if (!haUrl) return log("Set HA URL first in Setup.");
+    const p = normalizePath(path);
+    log(`Opening: ${haUrl}${p}`);
+    window.location.href = `${haUrl}${p}`;
+  }
+
+  // Save / Test
   saveBtn.addEventListener("click", () => {
     const haUrl = normalizeUrl(haUrlEl.value);
     const tokenTyped = haTokenEl.value.trim();
-    // If user typed a real token (not dots), store it
     const looksLikeDots = tokenTyped.includes("•");
     setSettings({
       haUrl,
@@ -208,6 +230,7 @@
     }
   });
 
+  // Control
   toggleBtn.addEventListener("click", async () => {
     try {
       const id = entityIdEl.value.trim();
@@ -227,6 +250,22 @@
     catch (e) { log(String(e)); }
   });
 
+  // Dash
+  openHaRootBtn.addEventListener("click", () => openHaPath("/"));
+  openLovelaceBtn.addEventListener("click", () => openHaPath("/lovelace"));
+
+  saveDashBtn.addEventListener("click", () => {
+    setSettings({ dashPath: dashPathEl.value });
+    applySettingsToUI();
+    log("Saved dashboard path.");
+  });
+
+  openDashBtn.addEventListener("click", () => {
+    setSettings({ dashPath: dashPathEl.value });
+    applySettingsToUI();
+    openHaPath(dashPathEl.value);
+  });
+
   // -------- QR scanning --------
   let codeReader = null;
   let scanControlsStop = null;
@@ -235,7 +274,6 @@
     const raw = (text || "").trim();
     if (!raw) return null;
 
-    // Accept JSON {"token":"..."} or {"ha_token":"..."}
     if (raw.startsWith("{") && raw.endsWith("}")) {
       try {
         const obj = JSON.parse(raw);
@@ -244,7 +282,6 @@
       } catch {}
     }
 
-    // Otherwise assume raw token string
     if (raw.length > 20) return raw;
     return null;
   }
@@ -256,7 +293,6 @@
       const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
       let chosenId = null;
 
-      // Try to choose a rear camera (best effort)
       for (const d of devices) {
         if ((d.label || "").toLowerCase().includes("back")) {
           chosenId = d.deviceId;
@@ -270,12 +306,10 @@
       const controls = await codeReader.decodeFromVideoDevice(
         chosenId,
         videoEl,
-        async (result, err, controls) => {
+        async (result) => {
           if (!result) return;
 
-          const text = result.getText();
-          const token = parseTokenFromQr(text);
-
+          const token = parseTokenFromQr(result.getText());
           if (!token) {
             log("QR scanned but not recognized as a token.");
             return;
@@ -288,7 +322,6 @@
           try { controls.stop(); } catch {}
           scanControlsStop = null;
 
-          // Optional: immediately test and jump to control
           try {
             await testConnection();
             setTab("control");
